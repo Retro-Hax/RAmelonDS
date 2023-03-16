@@ -1,0 +1,6 @@
+[submodule "rcheevos"]
+	path = rcheevos
+	url = https://github.com/RetroAchievements/rcheevos.git
+[submodule "src/rcheevos"]
+	path = src/rcheevos
+	url = https://github.com/RetroAchievements/rcheevos.git
