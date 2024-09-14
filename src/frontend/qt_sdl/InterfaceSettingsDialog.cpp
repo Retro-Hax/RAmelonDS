@@ -1,5 +1,5 @@
 /*
-    Copyright 2016-2022 melonDS team
+    Copyright 2016-2024 melonDS team
 
     This file is part of melonDS.
 
@@ -16,24 +16,43 @@
     with melonDS. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <QStyleFactory>
 #include "InterfaceSettingsDialog.h"
 #include "ui_InterfaceSettingsDialog.h"
 
 #include "types.h"
 #include "Platform.h"
 #include "Config.h"
+#include "main.h"
 
 InterfaceSettingsDialog* InterfaceSettingsDialog::currentDlg = nullptr;
-
 InterfaceSettingsDialog::InterfaceSettingsDialog(QWidget* parent) : QDialog(parent), ui(new Ui::InterfaceSettingsDialog)
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
 
-    ui->cbMouseHide->setChecked(Config::MouseHide != 0);
-    ui->spinMouseHideSeconds->setEnabled(Config::MouseHide != 0);
-    ui->spinMouseHideSeconds->setValue(Config::MouseHideSeconds);
-    ui->cbPauseLostFocus->setChecked(Config::PauseLostFocus != 0);
+    emuInstance = ((MainWindow*)parent)->getEmuInstance();
+
+    auto& cfg = emuInstance->getGlobalConfig();
+
+    ui->cbMouseHide->setChecked(cfg.GetBool("MouseHide"));
+    ui->spinMouseHideSeconds->setEnabled(ui->cbMouseHide->isChecked());
+    ui->spinMouseHideSeconds->setValue(cfg.GetInt("MouseHideSeconds"));
+    ui->cbPauseLostFocus->setChecked(cfg.GetBool("PauseLostFocus"));
+    ui->spinMaxFPS->setValue(cfg.GetInt("MaxFPS"));
+
+    const QList<QString> themeKeys = QStyleFactory::keys();
+    const QString currentTheme = qApp->style()->objectName();
+    QString cfgTheme = cfg.GetQString("UITheme");
+
+    ui->cbxUITheme->addItem("System default", "");
+
+    for (int i = 0; i < themeKeys.length(); i++)
+    {
+        ui->cbxUITheme->addItem(themeKeys[i], themeKeys[i]);
+        if (!cfgTheme.isEmpty() && themeKeys[i].compare(currentTheme, Qt::CaseInsensitive) == 0)
+            ui->cbxUITheme->setCurrentIndex(i + 1);
+    }
 }
 
 InterfaceSettingsDialog::~InterfaceSettingsDialog()
@@ -43,27 +62,31 @@ InterfaceSettingsDialog::~InterfaceSettingsDialog()
 
 void InterfaceSettingsDialog::on_cbMouseHide_clicked()
 {
-    if (ui->spinMouseHideSeconds->isEnabled())
-    {
-        ui->spinMouseHideSeconds->setEnabled(false);
-    }
-    else
-    {
-        ui->spinMouseHideSeconds->setEnabled(true);
-    }
+    ui->spinMouseHideSeconds->setEnabled(ui->cbMouseHide->isChecked());
 }
 
 void InterfaceSettingsDialog::done(int r)
 {
     if (r == QDialog::Accepted)
     {
-        Config::MouseHide = ui->cbMouseHide->isChecked() ? 1:0;
-        Config::MouseHideSeconds = ui->spinMouseHideSeconds->value();
-        Config::PauseLostFocus = ui->cbPauseLostFocus->isChecked() ? 1:0;
+        auto& cfg = emuInstance->getGlobalConfig();
+
+        cfg.SetBool("MouseHide", ui->cbMouseHide->isChecked());
+        cfg.SetInt("MouseHideSeconds", ui->spinMouseHideSeconds->value());
+        cfg.SetBool("PauseLostFocus", ui->cbPauseLostFocus->isChecked());
+        cfg.SetInt("MaxFPS", ui->spinMaxFPS->value());
+
+        QString themeName = ui->cbxUITheme->currentData().toString();
+        cfg.SetQString("UITheme", themeName);
 
         Config::Save();
 
-        emit updateMouseTimer();
+        if (!themeName.isEmpty())
+            qApp->setStyle(themeName);
+        else
+            qApp->setStyle(*systemThemeName);
+
+        emit updateInterfaceSettings();
     }
 
     QDialog::done(r);

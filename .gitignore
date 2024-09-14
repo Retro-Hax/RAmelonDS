@@ -1,4 +1,4 @@
-build
+build*/
 bin
 obj
 *.depend
@@ -7,7 +7,7 @@ obj
 melon_grc.c
 melon_grc.h
 melon.rc
-cmake-build
+cmake-build*
 cmake-build-debug
 compile_commands.json
 .idea
@@ -16,3 +16,8 @@ compile_commands.json
 *.exe
 
 .DS_Store
+
+.vs
+.vscode
+CMakeFiles
+CMakeCache.txt
